@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rumah 🏡 Geografi SMA DTBS Putra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        :root { --primary: #1e3a8a; --secondary: #064e3b; --accent: #f59e0b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        .dt-gradient { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); }
+        .materi-card { transition: all 0.3s ease; border: 1px solid #e2e8f0; background: white; cursor: pointer; }
+        .materi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); border-color: var(--primary); }
+        .materi-card.filled { border-left: 5px solid #10b981; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .animate-fade { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Form Styling */
+        .form-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-left: 5px; }
+        .form-input { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #f1f5f9; background: #f8fafc; outline: none; transition: 0.2s; }
+        .form-input:focus { border-color: var(--primary); background: white; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <header class="dt-gradient text-white p-5 shadow-xl sticky top-0 z-40 border-b-4 border-yellow-500">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div onclick="location.reload()" class="cursor-pointer text-center md:text-left">
+                <h1 class="text-xl font-extrabold tracking-tight">RUMAH 🏡 GEOGRAFI</h1>
+                <p class="text-[10px] text-emerald-300 font-bold tracking-widest uppercase">SMA DTBS Putra</p>
+            </div>
+
+            <div class="w-full md:w-1/3 relative">
+                <input type="text" id="materiSearch" oninput="searchMateri()" placeholder="Cari materi otomatis..." 
+                       class="w-full px-5 py-2.5 rounded-full text-slate-800 text-sm focus:ring-4 focus:ring-yellow-400/30 outline-none">
+                <span class="absolute right-4 top-2.5">🔍</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <select id="year-selector" onchange="changeYear(this.value)" class="bg-white/10 text-white font-bold px-3 py-1.5 rounded-lg text-xs outline-none border border-white/20"></select>
+                <button onclick="authTeacher()" id="auth-btn" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-yellow-500 transition-all">🔑</button>
+            </div>
+        </div>
+    </header>
+
+    <div id="teacher-panel" class="hidden container mx-auto mt-6 px-4">
+        <div class="bg-blue-600 p-4 rounded-2xl text-white flex flex-col md:flex-row justify-between items-center shadow-lg gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-lg">📂</div>
+                <div>
+                    <p class="text-[10px] font-bold opacity-80 uppercase">Integrasi Google Drive</p>
+                    <a href="https://drive.google.com/drive/folders/1BrPCJoR4H9xyasxffKH99jxSdCmqwncO?usp=sharing" target="_blank" class="text-xs font-bold underline">Buka Folder Penyimpanan Utama ↗️</a>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="exportData()" class="bg-emerald-500 px-4 py-2 rounded-xl text-xs font-black uppercase shadow-inner">📥 Backup JSON</button>
+                <button onclick="logoutTeacher()" class="bg-red-500 px-4 py-2 rounded-xl text-xs font-black uppercase">Keluar Mode Guru</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <div id="breadcrumb" class="mb-6 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-blue-600" onclick="renderMainMenu()">🏠 Home</div>
+        <div id="main-content" class="animate-fade"></div>
+    </main>
+
+    <div id="modal-form" class="fixed inset-0 bg-slate-900/90 hidden flex items-center justify-center z-50 p-4 backdrop-blur-md">
+        <div class="bg-white w-full max-w-2xl rounded-[2rem] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-6 border-b flex justify-between items-center bg-slate-50">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900 uppercase">Kelola Konten</h2>
+                    <p id="modal-subtitle" class="text-[10px] text-blue-600 font-bold"></p>
+                </div>
+                <button onclick="closeModal()" class="w-10 h-10 rounded-full bg-slate-200 text-xl font-bold">&times;</button>
+            </div>
+            <div id="input-fields" class="p-8 space-y-6 overflow-y-auto flex-grow bg-white">
+                </div>
+            <div class="p-6 bg-slate-50 border-t flex gap-4">
+                <button onclick="saveMateri()" class="w-full dt-gradient text-white py-4 rounded-xl font-black uppercase text-sm shadow-xl active:scale-95 transition-all">Simpan Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const teacherPin = "050613";
+        let isAuthorized = false;
+        let currentYear = localStorage.getItem('dtbs_geo_year') || "2025";
+        let storageData = JSON.parse(localStorage.getItem(`dtbs_geo_db_${currentYear}`)) || {};
+        let currentKey = "";
+
+        const fieldsConfig = {
+            "Reguler": [
+                {id: "modul", label: "01. Link Modul"},
+                {id: "pembuka", label: "02. Pembuka (Teks)", type: "area"},
+                {id: "absensi", label: "03. Link Absensi"},
+                {id: "imgA", label: "04. Apersepsi - A (Link Gambar)"},
+                {id: "imgB", label: "04. Apersepsi - B (Link Gambar)"},
+                {id: "imgC", label: "04. Apersepsi - C (Link Gambar)"},
+                {id: "vidD", label: "04. Apersepsi - D (Link Video)"},
+                {id: "vidE", label: "04. Apersepsi - E (Link Video)"},
+                {id: "ppt", label: "05. Materi - Link PPT"},
+                {id: "doc", label: "05. Materi - Link DOC"},
+                {id: "pdf", label: "05. Materi - Link PDF"},
+                {id: "kuis", label: "06. Link Latihan/Kuis"},
+                {id: "tugas", label: "07. Link Pengumpulan Tugas"},
+                {id: "remedial", label: "08. Link Remedial"},
+                {id: "pengayaan", label: "09. Link Pengayaan"},
+                {id: "refleksi", label: "10. Link Refleksi"},
+                {id: "kumpulRef", label: "11. Link Pengumpulan Refleksi"}
+            ],
+            "Eskul": [
+                {id: "deskripsi", label: "02. Deskripsi Kegiatan", type: "area"},
+                {id: "linkMat", label: "03. Link Materi"},
+                {id: "r1", label: "04. Rangkuman Link 1"},
+                {id: "r2", label: "04. Rangkuman Link 2"},
+                {id: "r3", label: "04. Rangkuman Link 3"},
+                {id: "r4", label: "04. Rangkuman Link 4"},
+                {id: "r5", label: "04. Rangkuman Link 5"},
+                {id: "absen", label: "06. Isi Absen Manual", type: "area"}
+            ],
+            "Osn": [
+                {id: "ppt", label: "02.a Link PPT"},
+                {id: "pdf", label: "02.b Link PDF"},
+                {id: "doc", label: "02.c Link DOC"},
+                {id: "k1", label: "03. Rangkuman Kolom 1", type: "area"},
+                {id: "k2", label: "03. Rangkuman Kolom 2", type: "area"},
+                {id: "k3", label: "03. Rangkuman Kolom 3", type: "area"},
+                {id: "k4", label: "03. Rangkuman Kolom 4", type: "area"},
+                {id: "k5", label: "03. Rangkuman Kolom 5", type: "area"},
+                {id: "k6", label: "03. Rangkuman Kolom 6", type: "area"},
+                {id: "absen", label: "04. Absensi Isi Manual", type: "area"}
+            ],
+            "Lainnya": [
+                {id: "url", label: "Link Akses"},
+                {id: "ket", label: "Keterangan Tambahan", type: "area"}
+            ]
+        };
+
+        function setupYear() {
+            const sel = document.getElementById('year-selector');
+            for(let i=0; i<25; i++) {
+                const y = 2025 + i;
+                const opt = document.createElement('option');
+                opt.value = y; opt.text = y;
+                opt.style.color = "black";
+                if(y == currentYear) opt.selected = true;
+                sel.appendChild(opt);
+            }
+        }
+
+        function renderMainMenu() {
+            document.getElementById('breadcrumb').innerHTML = "🏠 Home";
+            document.getElementById('main-content').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    ${['Kelas 10', 'Kelas 11', 'Kelas 12'].map(k => `
+                        <div onclick="renderKelas('${k}')" class="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm text-center cursor-pointer hover:border-blue-500 group">
+                            <span class="text-4xl block mb-2 group-hover:scale-110">📖</span>
+                            <p class="font-black text-slate-800 uppercase">${k}</p>
+                        </div>`).join('')}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                    <div onclick="renderList('Eskul', 20, '🏹 Eskul Geografi')" class="bg-emerald-600 text-white p-8 rounded-[2.5rem] cursor-pointer shadow-lg hover:scale-[1.01] transition-all">
+                        <h3 class="font-black text-2xl uppercase">🏹 Eskul Geografi</h3>
+                    </div>
+                    <div onclick="renderOsn()" class="bg-red-600 text-white p-8 rounded-[2.5rem] cursor-pointer shadow-lg hover:scale-[1.01] transition-all">
+                        <h3 class="font-black text-2xl uppercase">🏆 Program OSN</h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="renderList('Info', 10, '📢 Informasi Umum')" class="bg-white p-5 rounded-2xl border flex justify-between items-center cursor-pointer font-bold uppercase text-xs tracking-wider">📢 Informasi Umum <span>➡️</span></div>
+                    <div onclick="renderList('Apps', 10, '🛠️ Aplikasi Pendukung')" class="bg-white p-5 rounded-2xl border flex justify-between items-center cursor-pointer font-bold uppercase text-xs tracking-wider">🛠️ Aplikasi Pendukung <span>➡️</span></div>
+                </div>`;
+        }
+
+        function renderKelas(kls) {
+            document.getElementById('breadcrumb').innerHTML = `🏠 Home / ${kls.toUpperCase()}`;
+            document.getElementById('main-content').innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-blue-50 p-8 rounded-[2rem]">
+                        <h2 class="font-black text-blue-800 mb-6 uppercase">Semester 1</h2>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">${generateSlots(kls, 1, 15)}</div>
+                    </div>
+                    <div class="bg-emerald-50 p-8 rounded-[2rem]">
+                        <h2 class="font-black text-emerald-800 mb-6 uppercase">Semester 2</h2>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">${generateSlots(kls, 2, 15)}</div>
+                    </div>
+                </div>`;
+        }
+
+        function generateSlots(prefix, sem, count) {
+            let html = "";
+            for(let i=1; i<=count; i++) {
+                const key = sem === 0 ? `${prefix}_P${i}` : `${prefix}_S${sem}_M${i}`;
+                const data = storageData[key];
+                html += `
+                    <div onclick="openMateri('${key}')" class="materi-card p-4 rounded-xl text-center ${data ? 'filled' : 'opacity-40 border-dashed'}">
+                        <p class="text-[8px] font-bold text-slate-400">SLOT ${i}</p>
+                        <p class="text-[10px] font-black truncate">${data ? data.judul : 'KOSONG'}</p>
+                    </div>`;
+            }
+            return html;
+        }
+
+        function openMateri(key) {
+            currentKey = key;
+            const data = storageData[key];
+            if(data) renderDetail(data);
+            else if(isAuthorized) showForm();
+            else alert("⚠️ Konten belum tersedia.");
+        }
+
+        function renderDetail(data) {
+            let html = `
+                <div class="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl max-w-4xl mx-auto border-4 border-white">
+                    <div class="mb-10 border-b pb-6">
+                        <p class="text-[9px] font-black text-blue-600 uppercase tracking-[0.3em] mb-2">${currentKey} • TA ${currentYear}</p>
+                        <h1 class="text-3xl font-black text-slate-900 uppercase">${data.judul}</h1>
+                        ${isAuthorized ? `<button onclick="showForm()" class="mt-4 bg-slate-900 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Edit Konten</button>` : ''}
+                    </div>
+                    <div class="space-y-4">`;
+            
+            for(let k in data) {
+                if(k === 'judul' || !data[k]) continue;
+                const label = k.toUpperCase();
+                if(data[k].startsWith('http')) {
+                    html += `
+                        <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 group">
+                            <span class="text-[10px] font-black text-slate-400">${label}</span>
+                            <a href="${data[k]}" target="_blank" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-100 hover:bg-blue-700">Akses Link ↗️</a>
+                        </div>`;
+                } else {
+                    html += `
+                        <div class="bg-white p-6 rounded-xl border-l-4 border-emerald-500 shadow-sm">
+                            <p class="text-[10px] font-black text-emerald-600 mb-2 uppercase">${label}</p>
+                            <p class="text-sm font-medium text-slate-700 whitespace-pre-line">${data[k]}</p>
+                        </div>`;
+                }
+            }
+            html += `</div>
+                <button onclick="renderMainMenu()" class="mt-10 w-full bg-slate-100 text-slate-800 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200">Kembali ke Beranda</button>
+            </div>`;
+            document.getElementById('main-content').innerHTML = html;
+            window.scrollTo(0,0);
+        }
+
+        function showForm() {
+            let type = "Reguler";
+            if(currentKey.includes('Eskul')) type = "Eskul";
+            else if(currentKey.includes('OSN')) type = "Osn";
+            else if(currentKey.includes('Info') || currentKey.includes('Apps')) type = "Lainnya";
+
+            document.getElementById('modal-form').classList.remove('hidden');
+            document.getElementById('modal-subtitle').innerText = `${type.toUpperCase()} - ${currentKey}`;
+            
+            let html = `
+                <div>
+                    <label class="form-label">01. Judul Materi / Kegiatan</label>
+                    <input type="text" id="in-judul" value="${storageData[currentKey]?.judul || ''}" class="form-input font-bold text-blue-600">
+                </div>`;
+
+            fieldsConfig[type].forEach(f => {
+                html += `
+                    <div>
+                        <label class="form-label">${f.label}</label>
+                        ${f.type === 'area' ? 
+                            `<textarea id="in-${f.id}" class="form-input h-32">${storageData[currentKey]?.[f.id] || ''}</textarea>` :
+                            `<input type="text" id="in-${f.id}" value="${storageData[currentKey]?.[f.id] || ''}" class="form-input">`
+                        }
+                    </div>`;
+            });
+            document.getElementById('input-fields').innerHTML = html;
+        }
+
+        function saveMateri() {
+            const entry = { judul: document.getElementById('in-judul').value };
+            if(!entry.judul) return alert("Isi Judul!");
+
+            document.querySelectorAll('#input-fields input, #input-fields textarea').forEach(el => {
+                if(el.id !== 'in-judul') entry[el.id.replace('in-', '')] = el.value;
+            });
+
+            storageData[currentKey] = entry;
+            localStorage.setItem(`dtbs_geo_db_${currentYear}`, JSON.stringify(storageData));
+            alert("✅ Data Berhasil Disimpan!");
+            closeModal();
+            renderDetail(entry);
+        }
+
+        function searchMateri() {
+            const q = document.getElementById('materiSearch').value.toLowerCase();
+            if(!q) return renderMainMenu();
+            let res = [];
+            for(let key in storageData) {
+                if(storageData[key].judul.toLowerCase().includes(q)) {
+                    res.push(`<div onclick="openMateri('${key}')" class="bg-white p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:border-yellow-500">
+                        <p class="text-[8px] font-bold text-slate-400">${key}</p>
+                        <p class="font-black text-xs uppercase">${storageData[key].judul}</p>
+                    </div>`);
+                }
+            }
+            document.getElementById('main-content').innerHTML = `
+                <div class="mb-4 text-[10px] font-black uppercase text-slate-400 tracking-tighter italic">Hasil Pencarian:</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${res.join('') || '<p class="text-center col-span-full py-10 opacity-50">Materi tidak ditemukan...</p>'}</div>`;
+        }
+
+        function renderList(prefix, count, title) {
+            document.getElementById('breadcrumb').innerHTML = `🏠 Home / ${prefix.toUpperCase()}`;
+            document.getElementById('main-content').innerHTML = `
+                <div class="bg-white p-8 rounded-[2rem] border shadow-sm">
+                    <h2 class="font-black text-xl mb-6 uppercase italic">${title}</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">${generateSlots(prefix, 0, count)}</div>
+                </div>`;
+        }
+
+        function renderOsn() {
+            document.getElementById('breadcrumb').innerHTML = "🏠 Home / OSN";
+            document.getElementById('main-content').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${['OSN-Geografi', 'OSN-Kebumian', 'OSN-Astronomi'].map(o => `
+                        <div onclick="renderList('${o}', 20, '🏆 ${o}')" class="bg-white p-10 rounded-3xl border border-slate-200 text-center font-black cursor-pointer hover:bg-red-50">
+                            <span class="text-4xl block mb-2">🌍</span> ${o.split('-')[1].toUpperCase()}
+                        </div>`).join('')}
+                </div>`;
+        }
+
+        function authTeacher() {
+            const p = prompt("🔐 Masukkan PIN Guru:");
+            if(p === teacherPin) {
+                isAuthorized = true;
+                document.getElementById('teacher-panel').classList.remove('hidden');
+                document.getElementById('auth-btn').classList.replace('bg-white/10', 'bg-yellow-500');
+                renderMainMenu();
+                alert("Mode Pengelola Aktif!");
+            }
+        }
+
+        function logoutTeacher() { isAuthorized = false; location.reload(); }
+        function closeModal() { document.getElementById('modal-form').classList.add('hidden'); }
+        function changeYear(y) { localStorage.setItem('dtbs_geo_year', y); location.reload(); }
+        function exportData() {
+            const blob = new Blob([JSON.stringify(storageData)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `BACKUP_GEO_DTBS_${currentYear}.json`;
+            a.click();
+        }
+
+        setupYear();
+        renderMainMenu();
+    </script>
+</body>
+</html>
